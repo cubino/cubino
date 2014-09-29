@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
  
         // Locate the Buttons in activity_main.xml
         Button titlebutton = (Button) findViewById(R.id.titlebutton);
-
+        
         // Capture button click
         titlebutton.setOnClickListener(new OnClickListener() {
             public void onClick(View arg0) {
@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
                 new Title().execute();
             }
         });
+        
     }
  
     // Title AsyncTask
@@ -153,6 +154,8 @@ public class MainActivity extends Activity {
         	for (Gbox box :boxs){
         		title.add(box.getName());
         	}
+        	Button titlebutton = (Button) findViewById(R.id.titlebutton);
+        	titlebutton.setVisibility(View.INVISIBLE);
             ListView list = (ListView) findViewById(R.id.lvMain);
             // создаем адаптер
             ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, title);
