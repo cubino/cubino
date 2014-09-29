@@ -1,19 +1,22 @@
 package ru.tetrasoft.support;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
-import org.jsoup.Connection;
-import org.jsoup.Connection.Method;
-import org.jsoup.Connection.Response;
+import org.apache.commons.codec.binary.Base64;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import ru.tetrasoft.support.logix.Gbox;
+import ru.tetrasoft.support.logix.Module;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
@@ -30,17 +33,22 @@ public class MainActivity extends Activity {
      
 	ArrayList <String> listOfServers = new ArrayList<String>();
 	
-    final static String H1 = "http://mrtg:tetraroot@h1.tetra-soft.ru:8888/dashboard/";
-    final static String H2 = "http://mrtg:tetraroot@h2.tetra-soft.ru:8888/dashboard/";
-    final static String H3 = "http://mrtg:tetraroot@h3.tetra-soft.ru:8888/dashboard/";
-    final static String H4 = "http://mrtg:tetraroot@h4.tetra-soft.ru:8888/dashboard/";
-    final static String H5 = "http://mrtg:tetraroot@h5.tetra-soft.ru:8888/dashboard/";
-    final static String H6 = "http://mrtg:tetraroot@h6.tetra-soft.ru:8888/dashboard/";
+    final static String H1 = "http://h1.tetra-soft.ru:8888/dashboard/";
+    final static String H2 = "http://h2.tetra-soft.ru:8888/dashboard/";
+    final static String H3 = "http://h3.tetra-soft.ru:8888/dashboard/";
+    final static String H4 = "http://h4.tetra-soft.ru:8888/dashboard/";
+    final static String H5 = "http://h5.tetra-soft.ru:8888/dashboard/";
+    final static String H6 = "http://h6.tetra-soft.ru:8888/dashboard/";
     final static String H7 = "http://dashboard:iemo2Ugo@ubur.gtionline.ru:8888";
-    final static String H8 = "http://mrtg:tetraroot@novatek:8888/dashboard/";
+    final static String H8 = "http://novatek:8888/dashboard/";
+	
+    final static String RED = "fe1a00";
+    final static String GREEN = "77d42a";
+    final static String PINK = "fa665a";
     
     ProgressDialog mProgressDialog;
- 
+    
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,7 +68,7 @@ public class MainActivity extends Activity {
  
     // Title AsyncTask
     private class Title extends AsyncTask<Void, Void, Void> {
-       List <String> title = new ArrayList<String>();
+    	ArrayList <Gbox> boxs = new ArrayList <Gbox>();
  
         
         @Override
@@ -75,77 +83,155 @@ public class MainActivity extends Activity {
  
         @Override
         protected Void doInBackground(Void... params) {
-        	// response;
-       // 	try {        
-            	
-               //Connection.Response loginForm = Jsoup.connect(H1).method(Connection.Method.GET).execute();
-        	 Response response = Jsoup.connect("http://mrtg:tetraroot@h4.tetra-soft.ru:8888/dashboard/")
-            		  .userAgent("Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:25.0) Gecko/20100101 Firefox/25.0")
-            		  .method(Method.GET).response();
-        	 
-        	 Map<String, String> cookies = response.cookies();        	 
-        	 Connection connection = Jsoup.connect("http://mrtg:tetraroot@h4.tetra-soft.ru:8888/dashboard/");
+        	
+    		String base64login = new String(Base64.encodeBase64("mrtg:tetraroot".getBytes()));
+    		Document firstHetz = null;
 
-        	 for (Entry<String, String> cookie : cookies.entrySet()) 
-        	     connection.cookie(cookie.getKey(), cookie.getValue());
-        	 
-        	 
-        	 try {
-				Document document = connection.get();
+			try {
+				firstHetz = getDom (H1, base64login);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-       /*     } catch (IOException e) {
-                e.printStackTrace();
-                try {
-					response = Jsoup.connect("http://h3.tetra-soft.ru:8888/dashboard/")
-						    .userAgent("Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:25.0) Gecko/20100101 Firefox/25.0")
-						    .data("username", "mrtg")
-						    .data("password", "tetraroot")
-						    .method(Method.POST).execute();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-            }*/
-            return null;
-            
-
-               
-            		//Map<String, String> cookies = response.cookies();
-           
-                // Connect to the web site
-          /*      Document document = Jsoup.connect("http://h3.tetra-soft.ru:8888/dashboard/")
-                		//.cookies(loginForm.cookies())
-                		.userAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36")
-                		.data("mrtg:tetraroot")
-                	//	.data("password", "tetraroot")
-                		.get();
-                // Using Elements to get the class data
-                Elements elem = document.getElementsByTag("a");*/
-                // Locate the src attribute
-                
-              //  for (Element e : elem)
-             //   	title.add(e.absUrl("href"));
-                
-
+    	
+    		int status;
+    		
+    		for (Element el :firstHetz.getElementsByTag("tr")){
+    			Gbox newGbox = new Gbox();
+    			for (Element elChild : el.children()){
+    				for (Element elCh : elChild.getAllElements()){
+    					String tag = elCh.tag().getName(); 
+    					if (tag.equals("td")){
+    						if (elCh.ownText().equals("Database")){
+    							newGbox.addDatabase(parseModule(elCh));
+    						}
+    						else if (elCh.ownText().equals("Reporting Share")){
+    							newGbox.addReportingShare(parseModule(elCh));
+    						}
+    						else if (elCh.ownText().equals("Etc")){
+    							newGbox.addEtc(parseModule(elCh));
+    						}
+    						else if (elCh.ownText().startsWith("Camera")){
+    							newGbox.addCamera(parseModule(elCh));
+    						}
+    					}
+    					else if (tag.equals("a")){
+    						if (elCh.attr("href").endsWith(".conf")){ //тут ссылка на конфигурацию
+    							newGbox.setName(elCh.ownText());
+    							newGbox.setHrefConf(elCh.attr("href"));
+    						}
+    						else if (elCh.attr("href").endsWith("vpn.log")){
+    							newGbox.setHrefVPN(elCh.attr("href"));
+    						}
+    					}
+    					else if (tag.equals("span")){
+    						if (elCh.ownText().startsWith("eth")){
+    							newGbox.setNetworkAddress(elCh.ownText());
+    						}
+    					}
+    					
+    					else if (tag.equals("button")){
+    						status = convertClassToId (elCh.attr("class"));
+    						for (Element gboxInfo : elCh.children()){
+    							if (gboxInfo.attr("style").equals("font-weight:bold;")){
+    								String [] parts = gboxInfo.text().split("-");
+    								newGbox.setNumber(parts[1]);
+    								newGbox.setStatus(status);
+    							}
+    						}
+    					}
+    				}
+    			}
+    			boxs.add(newGbox);
+    		}
+			return null;
         }
  
         @Override
         protected void onPostExecute(Void result) {
             // Set title into TextView
+        	List <String> title = new ArrayList<String>();
+        	for (Gbox box :boxs){
+        		title.add(box.getName());
+        	}
             ListView list = (ListView) findViewById(R.id.lvMain);
-            
             // создаем адаптер
             ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, title);
             
             // присваиваем адаптер списку
             list.setAdapter(adapter);
-
+            
             mProgressDialog.dismiss();
-            
-            
-            
         }
     }
+    
+	public static Module parseModule (Element elCh){
+		Module module = new Module();
+		if (elCh.attr("style").endsWith(RED))
+			module.setStatus(Module.EPICFAIL);
+		else if (elCh.attr("style").endsWith(GREEN))
+			module.setStatus(Module.OK);
+		else if (elCh.attr("style").endsWith(PINK))
+			module.setStatus(Module.FAIL);
+		else 
+			module.setStatus(Module.UNKNOWN);
+		for (Element databaseElement : elCh.getAllElements()){
+			if (databaseElement.tag().getName().equals("span")){
+				String ip = databaseElement.ownText();
+				ip = ip.replaceAll("(\\(.*\\) )|( \\(.*\\))", "");
+				module.setIp(ip);
+			}
+			else if (databaseElement.tag().getName().equals("a")){
+				
+				if (databaseElement.ownText().matches("(^No Route To Host)|(^\\d.*)")){
+					module.setPing(databaseElement.ownText());
+				}
+				else if (!databaseElement.ownText().equals(""))
+					module.setInformation(databaseElement.ownText());
+			}
+		}
+		return module;
+	}
+	
+	public static Document getDom (String site, String login) throws IOException{
+		return Jsoup.connect(site).header("Authorization", "Basic " + login).get();
+	}
+	
+	public static Elements getElements (Document doc, String key, String value) throws IOException{	
+		return doc.getElementsByAttributeValue(key, value);
+	}
+	
+	public static int convertClassToId (String atr){
+
+		if (atr.equalsIgnoreCase("yellow")) return 1;
+		else if (atr.equalsIgnoreCase("red")) return 2;
+		else if (atr.equalsIgnoreCase("green")) return 3;
+		else return 0;
+	}
+		
+	public static String getHTTP(String site, String login){
+		URL url;
+		BufferedReader rd = null;
+		String result = "";
+		try {
+			url = new URL(site);
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setRequestProperty("Authorization", "Basic " + login);
+        conn.setRequestMethod("GET");
+        String line;
+        rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+         while ((line = rd.readLine()) != null) {
+            result += line;
+            result += "\n";
+         }
+		} catch (MalformedURLException e) {
+			
+		} catch (IOException e) {
+		} finally {
+			 try {
+				if (rd != null)
+				rd.close();
+			} catch (IOException e) {}
+		}
+		return result;
+	}
  }
